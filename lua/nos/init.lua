@@ -139,8 +139,7 @@ function M.operatorfunc(_)
 		initial_cmdline_pos = 10,
 		cr_handler = function()
 			local cmdline = vim.fn.getcmdline()
-			vim.schedule(function() vim.notify(vim.inspect(cmdline)) end)
-			local cmd_start_idx, cmd_end_idx = cmdline:find("NOS", 1, true)
+			local _, cmd_end_idx = cmdline:find("NOS", 1, true)
 			local nos_cmd = cmdline:sub(cmd_end_idx + 1)
 			local sep = nos_cmd:sub(1, 1)
 			if sep == nil then return "<cr>" end
