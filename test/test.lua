@@ -1,4 +1,3 @@
-vim.keymap.set({ 'n', "v" }, 'gs', function()
-	vim.opt.operatorfunc = 'v:lua.NosOperatorFunc'
-	return 'g@'
-end, { expr = true })
+local nos = require('nos')
+nos.setup({ debug = true })
+vim.keymap.set({ 'n', "v" }, 'gs', nos.keymapfunc, { expr = true })

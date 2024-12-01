@@ -1,3 +1,5 @@
+local util = require('nos.util')
+
 local M = {}
 
 local function parse_pattern(pat_str)
@@ -25,11 +27,19 @@ local function nos_preview(opts, preview_ns, preview_buf)
 	local buf = vim.api.nvim_get_current_buf()
 
 	local pat, norm, flags = parse_cmd_str(opts.args)
-	if #pat == 0 then return 2 end
+	if #pat == 0 then
+		vim.api.nvim_buf_set_extmark(buf, preview_ns, opts.line1 - 2, -1, {
+			end_line = opts.line2,
+			hl_group = 'Visual',
+			priority = 49,
+		})
+		return 2
+	end
 
 	while line1 ~= line2 do
 		local line_iteration_count = 0
 		local last_idx = 1
+		local original_line = vim.api.nvim_buf_get_lines(buf, line1 - 1, line1, false)[1]
 		while line_iteration_count < 32 do
 			local line = vim.api.nvim_buf_get_lines(buf, line1 - 1, line1, false)[1]
 			local start_idx, end_idx = string.find(line, pat, last_idx + 1)
@@ -122,9 +132,32 @@ function M.setup(opts)
 	end
 end
 
-function M.operatorfunc(motion_type)
-	vim.cmd('normal! gv')
-	vim.fn.feedkeys(':NOS/', 'n')
+function M.operatorfunc(_)
+	vim.cmd("normal! `[v`]")
+	util.start_cmdline_with_temp_cr({
+		initial_cmdline = "'<,'>NOS/",
+		initial_cmdline_pos = 10,
+		cr_handler = function()
+			local cmdline = vim.fn.getcmdline()
+			vim.schedule(function() vim.notify(vim.inspect(cmdline)) end)
+			local cmd_start_idx, cmd_end_idx = cmdline:find("NOS", 1, true)
+			local nos_cmd = cmdline:sub(cmd_end_idx + 1)
+			local sep = nos_cmd:sub(1, 1)
+			if sep == nil then return "<cr>" end
+			local parts = vim.split(nos_cmd, sep, { plain = true })
+			if #parts < 3 then
+				cmdline = cmdline .. sep
+				vim.fn.setcmdline(cmdline, #cmdline + 1)
+				return ""
+			end
+			return "<cr>"
+		end,
+	})
+end
+
+function M.keymapfunc()
+	vim.opt.operatorfunc = 'v:lua.NosOperatorFunc'
+	return 'g@'
 end
 
 return M
