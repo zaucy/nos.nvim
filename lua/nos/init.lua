@@ -62,7 +62,7 @@ local function nos_preview(opts, preview_ns, preview_buf)
 		last_focused_cursor_index = 0,
 	}
 
-	while line1 ~= line2 do
+	while line1 ~= line2 + 1 do
 		local line_iteration_count = 0
 		local last_idx = 1
 		while line_iteration_count < 32 do
@@ -169,7 +169,7 @@ local function nos_commit(opts)
 	local cursors = {}
 
 	if #pat > 0 then
-		while line1 ~= line2 do
+		while line1 ~= line2 + 1 do
 			local line_iteration_count = 0
 			local last_idx = 1
 			while line_iteration_count < 32 do
@@ -233,14 +233,13 @@ function M.setup(opts)
 	})
 
 	function _G.NosOperatorFunc(motion_type)
-		return M.operatorfunc(motion_type)
+		return M._operatorfunc(motion_type)
 	end
 end
 
-function M.operatorfunc(_)
-	vim.cmd("normal! `[v`]")
+local function nos_cmdline(range)
 	util.start_cmdline_with_temp_cr({
-		initial_cmdline = "'<,'>NOS/",
+		initial_cmdline = range .. "NOS/",
 		initial_cmdline_pos = 10,
 		cr_handler = function()
 			local cmdline = vim.fn.getcmdline()
@@ -260,9 +259,18 @@ function M.operatorfunc(_)
 	})
 end
 
-function M.keymapfunc()
+function M._operatorfunc(_)
+	vim.cmd("normal! `[v`]")
+	nos_cmdline("'<,'>")
+end
+
+function M.opkeymapfunc()
 	vim.opt.operatorfunc = 'v:lua.NosOperatorFunc'
 	return 'g@'
+end
+
+function M.bufkeymapfunc()
+	nos_cmdline("%")
 end
 
 return M
