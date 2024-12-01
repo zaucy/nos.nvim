@@ -78,7 +78,7 @@ local function nos_preview(opts, preview_ns, preview_buf)
 				vim.api.nvim_buf_add_highlight(
 					buf,
 					preview_ns,
-					'Visual',
+					'Search',
 					line1 - 1,
 					start_idx,
 					end_idx
@@ -124,16 +124,35 @@ local function nos_preview(opts, preview_ns, preview_buf)
 			end
 		end
 
-		local cursor = cursors[(flag_data.last_focused_cursor_index % #cursors) + 1]
-		if cursor then
-			vim.api.nvim_win_set_cursor(0, cursor)
+		for _, cursor in ipairs(cursors) do
 			vim.api.nvim_buf_add_highlight(
 				buf,
 				preview_ns,
-				'Cursor',
+				'IncSearch',
 				cursor[1] - 1,
 				cursor[2],
 				cursor[2] + 1
+			)
+		end
+
+		local curr_cursor = cursors[(flag_data.last_focused_cursor_index % #cursors) + 1]
+		if curr_cursor then
+			vim.api.nvim_win_set_cursor(0, curr_cursor)
+			vim.api.nvim_buf_add_highlight(
+				buf,
+				preview_ns,
+				'CurSearch',
+				curr_cursor[1] - 1,
+				curr_cursor[2],
+				curr_cursor[2] + 1
+			)
+			vim.api.nvim_buf_add_highlight(
+				buf,
+				preview_ns,
+				'CursorLine',
+				curr_cursor[1] - 1,
+				0,
+				-1
 			)
 		end
 	end
