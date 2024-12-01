@@ -226,10 +226,14 @@ local function preview_with_error(preview_fn)
 end
 
 function M.setup(opts)
+	local preview_fn = nos_preview
+	if opts.debug then
+		preview_fn = preview_with_error(nos_preview)
+	end
 	vim.api.nvim_create_user_command("NOS", nos_commit, {
 		nargs = "*",
 		range = true,
-		preview = (opts.debug and nos_preview) or preview_with_error(nos_preview),
+		preview = preview_fn,
 	})
 
 	function _G.NosOperatorFunc(motion_type)
