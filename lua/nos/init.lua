@@ -64,7 +64,7 @@ local function nos_preview(opts, preview_ns, preview_buf)
 
 	while line1 ~= line2 + 1 do
 		local line_iteration_count = 0
-		local last_idx = 1
+		local last_idx = 0
 		while line_iteration_count < 32 do
 			local line = vim.api.nvim_buf_get_lines(buf, line1 - 1, line1, false)[1]
 			local start_idx, end_idx = string.find(line, pat, last_idx + 1)
