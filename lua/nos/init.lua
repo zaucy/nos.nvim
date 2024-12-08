@@ -42,123 +42,6 @@ local nos_preview_flags = {
 	end,
 }
 
-local function nos_preview(opts, preview_ns, preview_buf)
-	local line1 = opts.line1
-	local line2 = opts.line2
-	local buf = vim.api.nvim_get_current_buf()
-
-	local pat, norm, flags = parse_cmd_str(opts.args)
-	if #pat == 0 then
-		vim.api.nvim_buf_set_extmark(buf, preview_ns, opts.line1 - 2, -1, {
-			end_line = opts.line2,
-			hl_group = 'Visual',
-			priority = 49,
-		})
-		return 2
-	end
-
-	local cursors = {}
-	local flag_data = {
-		last_focused_cursor_index = 0,
-	}
-
-	while line1 ~= line2 + 1 do
-		local line_iteration_count = 0
-		local last_idx = 0
-		while line_iteration_count < 32 do
-			local line = vim.api.nvim_buf_get_lines(buf, line1 - 1, line1, false)[1]
-			local start_idx, end_idx = string.find(line, pat, last_idx + 1)
-
-			if not start_idx or not end_idx then break end
-
-			vim.api.nvim_win_set_cursor(0, { line1, start_idx - 1 })
-
-			if not norm or not flags then
-				vim.api.nvim_buf_add_highlight(
-					buf,
-					preview_ns,
-					'Search',
-					line1 - 1,
-					start_idx,
-					end_idx
-				)
-			end
-
-			if #norm > 0 then
-				vim.cmd("normal! " .. norm)
-			end
-
-			local cursor_pos = vim.api.nvim_win_get_cursor(0)
-
-			if not flags then
-				vim.api.nvim_buf_add_highlight(
-					buf,
-					preview_ns,
-					'Cursor',
-					cursor_pos[1] - 1,
-					cursor_pos[2],
-					cursor_pos[2] + 1
-				)
-			end
-
-			table.insert(cursors, cursor_pos)
-
-			last_idx = cursor_pos[2] + 1
-			line_iteration_count = line_iteration_count + 1
-		end
-
-		line1 = line1 + 1
-	end
-
-	if flags then
-		for i = 1, #flags do
-			local flag = flags:sub(i, i)
-			local flag_fn = nos_preview_flags[flag]
-			local function next()
-				i = i + 1
-				return flags:sub(i, i)
-			end
-			if flag_fn then
-				flag_fn(flag_data, next, cursors)
-			end
-		end
-
-		for _, cursor in ipairs(cursors) do
-			vim.api.nvim_buf_add_highlight(
-				buf,
-				preview_ns,
-				'IncSearch',
-				cursor[1] - 1,
-				cursor[2],
-				cursor[2] + 1
-			)
-		end
-
-		local curr_cursor = cursors[(flag_data.last_focused_cursor_index % #cursors) + 1]
-		if curr_cursor then
-			vim.api.nvim_win_set_cursor(0, curr_cursor)
-			vim.api.nvim_buf_add_highlight(
-				buf,
-				preview_ns,
-				'CurSearch',
-				curr_cursor[1] - 1,
-				curr_cursor[2],
-				curr_cursor[2] + 1
-			)
-			vim.api.nvim_buf_add_highlight(
-				buf,
-				preview_ns,
-				'CursorLine',
-				curr_cursor[1] - 1,
-				0,
-				-1
-			)
-		end
-	end
-
-	return 2
-end
-
 local function nos_command(ns, opts, cmd_opts)
 	local line1 = cmd_opts.line1
 	local line2 = cmd_opts.line2
@@ -172,6 +55,7 @@ local function nos_command(ns, opts, cmd_opts)
 	local search_hl = vim.api.nvim_get_hl_id_by_name("Search")
 	local unfocused_cursor_hl = vim.api.nvim_get_hl_id_by_name("IncSearch")
 	local focused_cursor_hl = vim.api.nvim_get_hl_id_by_name("CurSearch")
+	local focused_cursor_line_hl = vim.api.nvim_get_hl_id_by_name("CursorLine")
 
 	if #pat > 0 then
 		while line1 ~= line2 + 1 do
@@ -186,7 +70,7 @@ local function nos_command(ns, opts, cmd_opts)
 						hl_group = search_hl,
 						end_row = line1 - 1,
 						end_col = end_idx,
-						priority = 50,
+						priority = 48,
 					})
 				end
 
@@ -194,7 +78,7 @@ local function nos_command(ns, opts, cmd_opts)
 					hl_group = cursor_hl,
 					end_row = line1 - 1,
 					end_col = start_idx,
-					priority = 51,
+					priority = 49,
 				})
 				table.insert(cursors, cursor_id)
 				last_idx = end_idx + 1
@@ -215,7 +99,7 @@ local function nos_command(ns, opts, cmd_opts)
 					hl_group = cursor_hl,
 					end_row = cursor[1] - 1,
 					end_col = cursor[2] + 1,
-					priority = 51,
+					priority = 49,
 				})
 			end
 		end
@@ -238,28 +122,51 @@ local function nos_command(ns, opts, cmd_opts)
 			end
 		end
 
-		local cursor_id = cursors[(flag_data.last_focused_cursor_index % #cursors) + 1]
-		if cursor_id then
+		for _, cursor_id in ipairs(cursors) do
 			local cursor = vim.api.nvim_buf_get_extmark_by_id(buf, ns, cursor_id, {})
-			vim.api.nvim_win_set_cursor(0, { cursor[1] + 1, cursor[2] })
+			vim.api.nvim_buf_set_extmark(buf, ns, cursor[1], cursor[2], {
+				hl_group = unfocused_cursor_hl,
+				end_row = cursor[1],
+				end_col = cursor[2] + 1,
+				priority = 49,
+			})
 		end
-	end
 
-	for _, cursor_id in ipairs(cursors) do
-		local cursor = vim.api.nvim_buf_get_extmark_by_id(buf, ns, cursor_id, {})
-		vim.api.nvim_buf_set_extmark(buf, ns, cursor[1], cursor[2], {
-			hl_group = cursor_hl,
-			end_row = cursor[1],
-			end_col = cursor[2] + 1,
-			priority = 51,
-		})
+		local focused_cursor_id = cursors[(flag_data.last_focused_cursor_index % #cursors) + 1]
+		if focused_cursor_id then
+			local cursor = vim.api.nvim_buf_get_extmark_by_id(buf, ns, focused_cursor_id, {})
+			vim.api.nvim_win_set_cursor(0, { cursor[1] + 1, cursor[2] })
+			vim.api.nvim_buf_set_extmark(buf, ns, cursor[1], cursor[2], {
+				hl_group = focused_cursor_hl,
+				end_row = cursor[1],
+				end_col = cursor[2] + 1,
+				priority = 50,
+			})
+			vim.api.nvim_buf_set_extmark(buf, ns, cursor[1], 0, {
+				hl_group = focused_cursor_line_hl,
+				end_row = cursor[1],
+				end_col = string.len(vim.api.nvim_buf_get_lines(buf, cursor[1], cursor[1] + 1, false)[1]),
+				hl_eol = true,
+				priority = 39,
+			})
+		end
+	else
+		for _, cursor_id in ipairs(cursors) do
+			local cursor = vim.api.nvim_buf_get_extmark_by_id(buf, ns, cursor_id, {})
+			vim.api.nvim_buf_set_extmark(buf, ns, cursor[1], cursor[2], {
+				hl_group = cursor_hl,
+				end_row = cursor[1],
+				end_col = cursor[2] + 1,
+				priority = 49,
+			})
+		end
 	end
 
 	return cursors
 end
 
 local function preview_diff(before_lines, after_lines, opts, cmd_opts, preview_ns, preview_buf)
-	local diff_hl = vim.api.nvim_get_hl_id_by_name("DiffChange")
+	local diff_hl = vim.api.nvim_get_hl_id_by_name("DiffAdd")
 
 	for line_index = 1, math.max(#before_lines, #after_lines) do
 		local row = cmd_opts.line1 + line_index - 1
@@ -332,7 +239,7 @@ local function preview_diff(before_lines, after_lines, opts, cmd_opts, preview_n
 				hl_group = diff_hl,
 				end_row = row - 1,
 				end_col = hl.end_col + 1,
-				priority = 50,
+				priority = 40,
 			})
 		end
 	end
