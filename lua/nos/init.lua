@@ -56,6 +56,7 @@ local function nos_command(ns, opts, cmd_opts)
 	local unfocused_cursor_hl = vim.api.nvim_get_hl_id_by_name("IncSearch")
 	local focused_cursor_hl = vim.api.nvim_get_hl_id_by_name("CurSearch")
 	local focused_cursor_line_hl = vim.api.nvim_get_hl_id_by_name("CursorLine")
+	local visual_hl = vim.api.nvim_get_hl_id_by_name("Visual")
 
 	if #pat > 0 then
 		while line1 ~= line2 + 1 do
@@ -80,7 +81,7 @@ local function nos_command(ns, opts, cmd_opts)
 					end_col = start_idx,
 					priority = 20000,
 				})
-				
+
 				table.insert(cursors, cursor_id)
 				last_idx = end_idx + 1
 				line_iteration_count = line_iteration_count + 1
@@ -104,6 +105,13 @@ local function nos_command(ns, opts, cmd_opts)
 				})
 			end
 		end
+	else
+		vim.api.nvim_buf_set_extmark(buf, ns, line1 - 1, 0, {
+			hl_group = visual_hl,
+			hl_eol = true,
+			end_row = line2,
+			end_col = 0,
+		})
 	end
 
 	local flag_data = {
@@ -129,7 +137,7 @@ local function nos_command(ns, opts, cmd_opts)
 				hl_group = unfocused_cursor_hl,
 				end_row = cursor[1],
 				end_col = cursor[2] + 1,
-				priority = 49,
+				priority = 20001,
 			})
 		end
 
@@ -141,7 +149,7 @@ local function nos_command(ns, opts, cmd_opts)
 				hl_group = focused_cursor_hl,
 				end_row = cursor[1],
 				end_col = cursor[2] + 1,
-				priority = 50,
+				priority = 20002,
 			})
 			vim.api.nvim_buf_set_extmark(buf, ns, cursor[1], 0, {
 				hl_group = focused_cursor_line_hl,
