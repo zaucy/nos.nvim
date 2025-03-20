@@ -66,7 +66,7 @@ local function nos_command(ns, opts, cmd_opts)
 				local start_idx, end_idx = string.find(line, pat, last_idx + 1)
 				if not start_idx or not end_idx then break end
 				if #norm == 0 then
-					vim.api.nvim_buf_set_extmark(buf, ns, line1 - 1, start_idx - 1, {
+					vim.api.nvim_buf_set_extmark(buf, ns, line1 - 1, start_idx, {
 						hl_group = search_hl,
 						end_row = line1 - 1,
 						end_col = end_idx,
@@ -78,8 +78,9 @@ local function nos_command(ns, opts, cmd_opts)
 					hl_group = cursor_hl,
 					end_row = line1 - 1,
 					end_col = start_idx,
-					priority = 49,
+					priority = 20000,
 				})
+				
 				table.insert(cursors, cursor_id)
 				last_idx = end_idx + 1
 				line_iteration_count = line_iteration_count + 1
